@@ -64,26 +64,46 @@ fn parse_bencode_string(input: &[u8]) -> IResult<&[u8], &[u8]> {
 mod tests {
     use super::*;
 
+    // --- Integer Parser Tests ---
+
     #[test]
-    fn test_bencode_int() {
+    fn test_parse_int_standard() {
         assert_eq!(
             parse_bencode_int(b"i234451e"),
             Ok((b"".as_slice(), 234451i64))
         );
-        assert_eq!(parse_bencode_int(b"i0e"), Ok((b"".as_slice(), 0)));
-        assert!(parse_bencode_int(b"i9999999999999999999999999e").is_err());
     }
 
     #[test]
-    fn test_bencode_string() {
+    fn test_parse_int_zero() {
+        assert_eq!(parse_bencode_int(b"i0e"), Ok((b"".as_slice(), 0)));
+    }
+
+    #[test]
+    fn test_parse_int_overflow_protection() {
+        assert!(parse_bencode_int(b"i9999999999999999999999999e").is_err());
+    }
+
+    // --- String Parser Tests ---
+
+    #[test]
+    fn test_parse_string_standard() {
         assert_eq!(
             parse_bencode_string(b"8:abcdefgh"),
             Ok((b"".as_slice(), b"abcdefgh".as_slice()))
         );
+    }
+
+    #[test]
+    fn test_parse_string_empty_boundary() {
         assert_eq!(
             parse_bencode_string(b"0:"),
             Ok((b"".as_slice(), b"".as_slice()))
         );
+    }
+
+    #[test]
+    fn test_parse_string_truncation_handling() {
         assert!(parse_bencode_string(b"7:abcde".as_slice()).is_err());
     }
 }
