@@ -24,7 +24,7 @@ fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
 
     match int_str.parse::<i64>() {
         Ok(num) => Ok((input, num)),
-        Err(_) => Err(nom::Err::Error(nom::error::Error::new(
+        Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
             original_input,
             nom::error::ErrorKind::Digit,
         ))),
