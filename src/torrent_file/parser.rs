@@ -1,7 +1,7 @@
 use std::str::from_utf8;
 
 use nom::bytes::complete::{tag, take};
-use nom::character::complete::digit1;
+use nom::character::complete::{digit1, i64 as nom_i64};
 use nom::sequence::delimited;
 use nom::{IResult, Parser};
 
@@ -11,26 +11,10 @@ fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
     // capture start of erroneous integer, if it is one
     let original_input = input;
 
-    let mut p = delimited(tag("i"), digit1, tag("e"));
-    let (input, int_bytes) = p.parse(input)?;
+    let mut p = delimited(tag("i"), nom_i64, tag("e"));
+    let (input, num) = p.parse(input)?;
 
-    let int_str = match from_utf8(int_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            return Err(nom::Err::Failure(nom::error::Error::new(
-                original_input,
-                nom::error::ErrorKind::Fail,
-            )));
-        }
-    };
-
-    match int_str.parse::<i64>() {
-        Ok(num) => Ok((input, num)),
-        Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
-            original_input,
-            nom::error::ErrorKind::Digit,
-        ))),
-    }
+    Ok((input, num))
 }
 
 fn parse_bencode_string(input: &[u8]) -> IResult<&[u8], &[u8]> {
