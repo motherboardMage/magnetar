@@ -13,6 +13,9 @@ pub struct Torrent<'a> {
     pub comment: Option<String>,
     pub created_by: Option<String>,
     pub creation_date: Option<i64>,
+
+    // Raw info bytes for hashing
+    pub raw_info: &'a [u8],
 }
 
 #[derive(Debug, Clone)]
