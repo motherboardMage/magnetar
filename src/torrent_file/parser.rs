@@ -8,9 +8,6 @@ use nom::{IResult, Parser};
 fn skip_bencode_value(input: &[u8]) -> IResult<&[u8], ()> {}
 
 fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
-    // capture start of erroneous integer, if it is one
-    let original_input = input;
-
     let mut p = delimited(tag("i"), nom_i64, tag("e"));
     let (input, num) = p.parse(input)?;
 
