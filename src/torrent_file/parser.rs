@@ -5,8 +5,6 @@ use nom::character::complete::{digit1, i64 as nom_i64};
 use nom::sequence::delimited;
 use nom::{IResult, Parser};
 
-fn skip_bencode_value(input: &[u8]) -> IResult<&[u8], ()> {}
-
 fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
     let mut p = delimited(tag("i"), nom_i64, tag("e"));
     let (input, num) = p.parse(input)?;

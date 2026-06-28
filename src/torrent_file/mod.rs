@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 pub mod parser;
+pub mod skip_values;
 
 #[derive(Debug, Clone)]
 pub struct Torrent<'a> {
