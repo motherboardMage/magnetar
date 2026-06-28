@@ -12,6 +12,12 @@ pub fn skip_bencode_value(input: &[u8]) -> IResult<&[u8], ()> {
         b'0'..=b'9' => skip_string(input),
         b'l' => skip_list(input),
         b'd' => skip_dictionary(input),
+        _ => {
+            return Err(nom::Err::Failure(nom::error::Error::new(
+                input,
+                nom::error::ErrorKind::Tag,
+            )));
+        }
     };
 
     Ok((remaining, ()))
