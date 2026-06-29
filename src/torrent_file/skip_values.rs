@@ -26,7 +26,7 @@ pub fn skip_bencode_value(input: &[u8]) -> IResult<&[u8], ()> {
                 nom::error::ErrorKind::Tag,
             )));
         }
-    };
+    }?;
 
     Ok((remaining, ()))
 }
