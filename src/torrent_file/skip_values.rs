@@ -53,8 +53,12 @@ fn skip_list(input: &[u8]) -> IResult<&[u8], ()> {
 }
 
 fn skip_dictionary(input: &[u8]) -> IResult<&[u8], ()> {
-    let (remaining, _) =
-        delimited(tag("d"), many0_count(skip_bencode_value), tag("e")).parse(input)?;
+    let (remaining, _) = delimited(
+        tag("d"),
+        many0_count((skip_bencode_value, skip_bencode_value)),
+        tag("e"),
+    )
+    .parse(input)?;
 
     Ok((remaining, ()))
 }
