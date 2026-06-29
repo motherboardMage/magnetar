@@ -62,3 +62,76 @@ fn skip_dictionary(input: &[u8]) -> IResult<&[u8], ()> {
 
     Ok((remaining, ()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- skip_bencode_value function tests ---
+
+    #[test]
+    fn test_empty_input() {
+        assert!(skip_bencode_value(b"".as_slice()).is_err());
+    }
+
+    #[test]
+    fn test_invalid_tag() {
+        assert!(skip_bencode_value(b"x23124e".as_slice()).is_err());
+    }
+
+    // --- skip_integer function tests ---
+
+    #[test]
+    fn test_skip_positive_integer() {
+        assert_eq!(
+            skip_bencode_value(b"i23456e5:Hello".as_slice()),
+            Ok((b"5:Hello".as_slice(), ()))
+        );
+    }
+
+    #[test]
+    fn test_skip_negative_integer() {
+        assert_eq!(
+            skip_bencode_value(b"i-23456e5:Hello".as_slice()),
+            Ok((b"5:Hello".as_slice(), ()))
+        );
+    }
+
+    // --- skip_list function tests ---
+
+    #[test]
+    fn test_skip_integer_list() {
+        assert_eq!(
+            skip_bencode_value(b"li432ei231155ei654345ee5:Hello".as_slice()),
+            Ok((b"5:Hello".as_slice(), ()))
+        );
+    }
+
+    #[test]
+    fn test_skip_string_list() {
+        assert_eq!(
+            skip_bencode_value(b"l5:Hello3:Bye3:hiie".as_slice()),
+            Ok((b"".as_slice(), ()))
+        );
+    }
+
+    #[test]
+    fn test_skip_invalid_members() {
+        assert!(skip_bencode_value(b"lx32435ee".as_slice()).is_err());
+    }
+
+    #[test]
+    fn test_skip_nested_list() {
+        assert_eq!(
+            skip_bencode_value(
+                b"lli432ei231155ei654345eel5:Hello3:Bye3:hiil5:abcdei12345eeee5:Hello".as_slice()
+            ),
+            Ok((b"5:Hello".as_slice(), ()))
+        );
+    }
+
+    #[test]
+    fn test_invalid_tag_in_list() {
+        assert!(skip_bencode_value(b"l5:Hello3:Byeli2324ex:5432ee".as_slice()).is_err());
+    }
+}
