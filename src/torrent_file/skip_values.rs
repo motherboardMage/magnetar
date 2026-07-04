@@ -134,4 +134,27 @@ mod tests {
     fn test_invalid_tag_in_list() {
         assert!(skip_bencode_value(b"l5:Hello3:Byeli2324ex:5432ee".as_slice()).is_err());
     }
+
+    // --- skip_dictionary function tests ---
+
+    #[test]
+    fn test_skip_dictionary_multi() {
+        assert_eq!(
+            skip_bencode_value(
+                b"d5:Helloi23e3:Byelli432ei231155ei654345eel5:Hello3:Bye3:hiil5:abcdei12345eeeee"
+                    .as_slice()
+            ),
+            Ok((b"".as_slice(), ()))
+        );
+    }
+
+    #[test]
+    fn test_odd_number_of_entries() {
+        assert!(skip_bencode_value(b"d3:Abci12e5:Helloe".as_slice()).is_err());
+    }
+
+    #[test]
+    fn test_non_string_key() {
+        assert!(skip_bencode_value(b"di244e3:Bye5:Helloi534ee".as_slice()).is_err());
+    }
 }
