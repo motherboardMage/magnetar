@@ -22,14 +22,18 @@ pub struct Torrent<'a> {
 #[derive(Debug, Clone)]
 pub struct Info<'a> {
     pub name: String,
-    pub piece_length: i64,
+    pub piece_length: usize,
     pub meta_version: Option<i64>,
     pub file_layout: FileLayout<'a>,
 }
 
 #[derive(Debug, Clone)]
 pub enum FileLayout<'a> {
-    V1 {
+    V1SingleFile {
+        pieces: &'a [u8],
+        length: usize,
+    },
+    V1MultiFile {
         pieces: &'a [u8],
         files: Vec<FileV1<'a>>,
     },
@@ -45,12 +49,15 @@ pub enum FileLayout<'a> {
 
 #[derive(Debug, Clone)]
 pub struct FileV1<'a> {
-    pub length: i64,
-    pub path: Option<Vec<&'a [u8]>>,
+    pub length: usize,
+    pub path: Vec<&'a [u8]>,
 }
 
 #[derive(Debug, Clone)]
 pub enum FileTreeNode<'a> {
     Directory(BTreeMap<&'a [u8], FileTreeNode<'a>>),
-    File { length: i64, pieces_root: &'a [u8] },
+    File {
+        length: usize,
+        pieces_root: &'a [u8],
+    },
 }
