@@ -1,5 +1,3 @@
-use std::str::from_utf8;
-
 use nom::bytes::complete::{tag, take};
 use nom::character::complete::{i64 as nom_i64, u64 as nom_u64};
 use nom::multi::many0;
