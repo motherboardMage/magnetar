@@ -1,7 +1,7 @@
 use std::str::from_utf8;
 
 use nom::bytes::complete::{tag, take};
-use nom::character::complete::{digit1, i64 as nom_i64};
+use nom::character::complete::{i64 as nom_i64, u64 as nom_u64};
 use nom::multi::many0;
 use nom::sequence::delimited;
 use nom::{IResult, Parser};
@@ -14,30 +14,9 @@ fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
 }
 
 fn parse_bencode_string(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    let (input, len_bytes) = digit1(input)?;
-    let (input, _) = tag(":")(input)?;
-
-    let len_str = match from_utf8(len_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            return Err(nom::Err::Failure(nom::error::Error::new(
-                input,
-                nom::error::ErrorKind::Fail,
-            )));
-        }
-    };
-
-    let len = match len_str.parse::<usize>() {
-        Ok(n) => n,
-        Err(_) => {
-            return Err(nom::Err::Error(nom::error::Error::new(
-                input,
-                nom::error::ErrorKind::Digit,
-            )));
-        }
-    };
-
-    let (input, parsed) = take(len)(input)?;
+    let (input, len) = nom_u64(input)?;
+    let (input, _) = tag(":").parse(input)?;
+    let (input, parsed) = take(len as usize).parse(input)?;
 
     Ok((input, parsed))
 }
