@@ -14,7 +14,7 @@ fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
 fn parse_bencode_string(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (input, len) = nom_u64(input)?;
     let (input, _) = tag(":").parse(input)?;
-    let (input, parsed) = take(len as usize).parse(input)?;
+    let (input, parsed) = take(len).parse(input)?;
 
     Ok((input, parsed))
 }
