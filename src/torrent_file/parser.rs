@@ -2,6 +2,7 @@ use std::str::from_utf8;
 
 use nom::bytes::complete::{tag, take};
 use nom::character::complete::{digit1, i64 as nom_i64};
+use nom::multi::many0;
 use nom::sequence::delimited;
 use nom::{IResult, Parser};
 
@@ -39,6 +40,12 @@ fn parse_bencode_string(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (input, parsed) = take(len)(input)?;
 
     Ok((input, parsed))
+}
+
+fn parse_string_list(input: &[u8]) -> IResult<&[u8], Vec<&[u8]>> {
+    let (input, list) = delimited(tag("l"), many0(parse_bencode_string), tag("e")).parse(input)?;
+
+    Ok((input, list))
 }
 
 #[cfg(test)]
@@ -86,5 +93,16 @@ mod tests {
     #[test]
     fn test_parse_string_truncation_handling() {
         assert!(parse_bencode_string(b"7:abcde".as_slice()).is_err());
+    }
+
+    // --- String List Parser Tests ---
+
+    #[test]
+    fn test_parse_string_list_standard() {
+        let expected: Vec<&[u8]> = vec![b"Hello", b"Bye", b"Hi"];
+        assert_eq!(
+            parse_string_list(b"l5:Hello3:Bye2:Hie"),
+            Ok((b"".as_slice(), expected))
+        );
     }
 }
