@@ -82,4 +82,23 @@ mod tests {
             Ok((b"".as_slice(), expected))
         );
     }
+
+    #[test]
+    fn test_string_list_remaining_input() {
+        let expected: Vec<&[u8]> = vec![b"Hello", b"Bye", b"Hi"];
+        assert_eq!(
+            parse_string_list(b"l5:Hello3:Bye2:Hie7:remains"),
+            Ok((b"7:remains".as_slice(), expected))
+        );
+    }
+
+    #[test]
+    fn test_string_list_empty_list() {
+        assert_eq!(parse_string_list(b"le"), Ok((b"".as_slice(), vec![])));
+    }
+
+    #[test]
+    fn test_string_list_non_string_elements() {
+        assert!(parse_string_list(b"li123e5:Helloe").is_err());
+    }
 }
