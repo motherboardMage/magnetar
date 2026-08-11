@@ -47,7 +47,7 @@ pub enum FileLayout<'a> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FileV1<'a> {
     pub length: usize,
     pub path: Vec<&'a [u8]>,
