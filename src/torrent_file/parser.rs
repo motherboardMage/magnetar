@@ -168,4 +168,19 @@ mod tests {
             ))
         );
     }
+
+    #[test]
+    fn test_file_entry_unordered() {
+        let expected_path: Vec<&[u8]> = vec![b"docs", b"notes", b"ab.txt"];
+        assert_eq!(
+            parse_file_entry(b"d4:pathl4:docs5:notes6:ab.txte6:lengthi345ee"),
+            Ok((
+                b"".as_slice(),
+                FileV1 {
+                    length: 345usize,
+                    path: expected_path
+                }
+            ))
+        );
+    }
 }
