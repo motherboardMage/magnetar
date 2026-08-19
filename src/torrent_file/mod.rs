@@ -53,11 +53,11 @@ pub struct FileV1<'a> {
     pub path: Vec<&'a [u8]>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FileTreeNode<'a> {
     Directory(BTreeMap<&'a [u8], FileTreeNode<'a>>),
     File {
         length: usize,
-        pieces_root: &'a [u8],
+        pieces_root: Option<&'a [u8]>,
     },
 }
