@@ -474,4 +474,80 @@ mod tests {
             Ok((b"".as_slice(), expected))
         );
     }
+
+    // --- Info dict parser tests ---
+
+    #[test]
+    fn test_parse_info_dict_standard() {
+        let hash_a: &[u8] = &[b'a'; 32];
+        let hash_b: &[u8] = &[b'b'; 32];
+        let hash_c: &[u8] = &[b'c'; 32];
+        let hash_f: &[u8] = &[b'f'; 32];
+
+        let readme = FileTreeNode::File {
+            length: 128,
+            pieces_root: Some(hash_a),
+        };
+        let guide = FileTreeNode::File {
+            length: 1024,
+            pieces_root: Some(hash_b),
+        };
+        let main_rs = FileTreeNode::File {
+            length: 512,
+            pieces_root: Some(hash_c),
+        };
+        let utils_rs = FileTreeNode::File {
+            length: 256,
+            pieces_root: Some(hash_f),
+        };
+
+        let mut docs_map = BTreeMap::new();
+        docs_map.insert(b"guide.txt".as_slice(), guide);
+
+        let mut src_map = BTreeMap::new();
+        src_map.insert(b"main.rs".as_slice(), main_rs);
+        src_map.insert(b"utils.rs".as_slice(), utils_rs);
+
+        let mut file_tree = BTreeMap::new();
+        file_tree.insert(b"README.md".as_slice(), readme);
+        file_tree.insert(b"docs".as_slice(), FileTreeNode::Directory(docs_map));
+        file_tree.insert(b"src".as_slice(), FileTreeNode::Directory(src_map));
+
+        let input = b"d9:file treed9:README.mdd0:d6:lengthi128e11:pieces root32:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaee4:docsd9:guide.txtd0:d6:lengthi1024e11:pieces root32:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbeee3:srcd7:main.rsd0:d6:lengthi512e11:pieces root32:ccccccccccccccccccccccccccccccccee8:utils.rsd0:d6:lengthi256e11:pieces root32:ffffffffffffffffffffffffffffffffeeee5:filesld6:lengthi345e4:pathl4:docs5:notes6:ab.txteed4:pathl4:docs5:notes6:bc.txte6:lengthi543eee12:meta versioni2e4:name13:important shi12:piece lengthi32768e6:pieces20:aaaaaaaaaaaaaaaaaaaae";
+
+        let path1: Vec<&[u8]> = vec![b"docs", b"notes", b"ab.txt"];
+        let file1 = FileV1 {
+            length: 345usize,
+            path: path1,
+        };
+
+        let path2: Vec<&[u8]> = vec![b"docs", b"notes", b"bc.txt"];
+        let file2 = FileV1 {
+            length: 543usize,
+            path: path2,
+        };
+
+        let files = vec![file1, file2];
+
+        let meta_version = Some(2i64);
+        let name = Some(b"important shi".as_slice());
+        let piece_length = (1 << 15) as usize;
+        let pieces = b"aaaaaaaaaaaaaaaaaaaa";
+
+        let expected_info = Info {
+            name,
+            piece_length,
+            meta_version,
+            file_layout: FileLayout::Hybrid {
+                pieces,
+                files,
+                file_tree,
+            },
+        };
+
+        assert_eq!(
+            parse_info_dict(input.as_slice()),
+            Ok((b"".as_slice(), expected_info))
+        );
+    }
 }
