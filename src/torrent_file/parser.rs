@@ -180,6 +180,108 @@ fn parse_file_tree<'a>(input: &'a [u8]) -> IResult<&'a [u8], BTreeMap<&'a [u8], 
     Ok((input, map))
 }
 
+fn parse_info_dict<'a>(input: &'a [u8]) -> IResult<&'a [u8], Info<'a>> {
+    let (mut input, _) = tag("d").parse(input)?;
+
+    let mut file_tree = None;
+    let mut files = None;
+    let (mut length, mut len_fail_pos) = (None, input);
+    let mut meta_version = None;
+    let (mut name, mut name_fail_pos) = (None, input);
+    let (mut piece_length, mut pl_fail_pos) = (None, input);
+    let mut pieces = None;
+
+    loop {
+        let next;
+        (input, next) = peek(take(1usize)).parse(input)?;
+
+        if next == b"e" {
+            break;
+        }
+
+        len_fail_pos = input;
+        name_fail_pos = input;
+        pl_fail_pos = input;
+
+        let field;
+        (input, field) = parse_bencode_string(input)?;
+
+        match field {
+            b"file tree" => (input, file_tree) = res_in_some(parse_file_tree(input))?,
+
+            b"files" => (input, files) = res_in_some(parse_files_list(input))?,
+
+            b"length" => {
+                (input, length) = parse_bencode_int(input)
+                    .map(|(ptr, len)| (ptr, if len < 0 { None } else { Some(len as usize) }))?
+            }
+
+            b"meta version" => (input, meta_version) = res_in_some(parse_bencode_int(input))?,
+
+            b"name" => (input, name) = res_in_some(parse_bencode_string(input))?,
+
+            b"piece length" => {
+                (input, piece_length) = parse_bencode_int(input)
+                    .map(|(ptr, pl)| (ptr, if pl < 0 { None } else { Some(pl as usize) }))?
+            }
+
+            b"pieces" => {
+                (input, pieces) = parse_bencode_string(input).map(|(ptr, pieces)| {
+                    (
+                        ptr,
+                        if pieces.len() % 20 == 0 {
+                            Some(pieces)
+                        } else {
+                            None
+                        },
+                    )
+                })?
+            }
+
+            _ => (input, _) = skip_bencode_value(input)?,
+        }
+    }
+
+    (input, _) = tag("e").parse(input)?;
+
+    let name = name.ok_or(fail(name_fail_pos, ErrorKind::Fail))?;
+    let piece_length = piece_length.ok_or(fail(pl_fail_pos, ErrorKind::Fail))?;
+
+    let file_layout = match (file_tree, files, length, pieces) {
+        (Some(ft), None, None, None) => FileLayout::V2 { file_tree: ft },
+
+        (Some(ft), Some(f), None, Some(p)) => FileLayout::Hybrid {
+            pieces: p,
+            files: f,
+            file_tree: ft,
+        },
+
+        (None, None, Some(l), Some(p)) => FileLayout::V1SingleFile {
+            pieces: p,
+            length: l,
+        },
+
+        (None, Some(f), None, Some(p)) => FileLayout::V1MultiFile {
+            pieces: p,
+            files: f,
+        },
+
+        (_, _, None, _) => return Err(fail(len_fail_pos, ErrorKind::Fail)),
+
+        _ => return Err(fail(input, ErrorKind::Fail)),
+    };
+
+    Ok((
+        input,
+        Info {
+            name,
+            piece_length,
+            meta_version,
+            file_layout,
+        },
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
