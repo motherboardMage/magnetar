@@ -9,10 +9,14 @@ use nom::sequence::delimited;
 use nom::{IResult, Parser};
 
 use crate::torrent_file::skip_values::skip_bencode_value;
-use crate::torrent_file::{FileTreeNode, FileV1};
+use crate::torrent_file::{FileLayout, FileTreeNode, FileV1, Info};
 
 fn fail(input: &[u8], code: ErrorKind) -> nom::Err<nom::error::Error<&[u8]>> {
     nom::Err::Failure(nom::error::Error::new(input, code))
+}
+
+fn res_in_some<T>(result: IResult<&[u8], T>) -> IResult<&[u8], Option<T>> {
+    result.map(|(ptr, res)| (ptr, Some(res)))
 }
 
 fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
@@ -43,6 +47,8 @@ fn parse_file_entry<'a>(input: &'a [u8]) -> IResult<&'a [u8], FileV1<'a>> {
     let mut len = None;
     let mut path = None;
 
+    let (mut len_fail_pos, mut path_fail_pos) = (input, input);
+
     loop {
         let next;
         (input, next) = peek(take(1usize)).parse(input)?;
@@ -53,20 +59,25 @@ fn parse_file_entry<'a>(input: &'a [u8]) -> IResult<&'a [u8], FileV1<'a>> {
 
         let key;
 
+        len_fail_pos = input;
+        path_fail_pos = input;
         (input, key) = parse_bencode_string(input)?;
+
         match key {
             b"length" => {
                 (input, len) = parse_bencode_int(input)
                     .map(|x| (x.0, if x.1 < 0 { None } else { Some(x.1 as usize) }))?
             }
-            b"path" => (input, path) = parse_string_list(input).map(|x| (x.0, Some(x.1)))?,
+            b"path" => {
+                (input, path) = parse_string_list(input).map(|x| (x.0, Some(x.1)))?;
+            }
             _ => (input, _) = skip_bencode_value(input)?,
         }
     }
     (input, _) = tag("e").parse(input)?;
 
-    let length = len.ok_or(fail(input, ErrorKind::Fail))?;
-    let path = path.ok_or(fail(input, ErrorKind::Fail))?;
+    let length = len.ok_or(fail(len_fail_pos, ErrorKind::Fail))?;
+    let path = path.ok_or(fail(path_fail_pos, ErrorKind::Fail))?;
 
     Ok((input, FileV1 { length, path }))
 }
@@ -82,6 +93,8 @@ fn parse_file_tree_node<'a>(input: &'a [u8]) -> IResult<&'a [u8], FileTreeNode<'
 
     let mut length = None;
     let mut pieces_root = None;
+
+    let (mut len_fail_pos, mut pr_fail_pos) = (input, input);
 
     let name;
     (_, (_, name)) = peek((tag("d"), parse_bencode_string)).parse(input)?;
@@ -99,15 +112,18 @@ fn parse_file_tree_node<'a>(input: &'a [u8]) -> IResult<&'a [u8], FileTreeNode<'
                 break;
             }
 
+            len_fail_pos = input;
+            pr_fail_pos = input;
             (input, property) = parse_bencode_string(input)?;
+
             match property {
                 b"length" => {
                     (input, length) = parse_bencode_int(input)
-                        .map(|x| (x.0, if x.1 < 0 { None } else { Some(x.1 as usize) }))?
+                        .map(|x| (x.0, if x.1 < 0 { None } else { Some(x.1 as usize) }))?;
                 }
 
                 b"pieces root" => {
-                    (input, pieces_root) = parse_bencode_string(input).map(|x| (x.0, Some(x.1)))?
+                    (input, pieces_root) = parse_bencode_string(input).map(|x| (x.0, Some(x.1)))?;
                 }
 
                 _ => (input, _) = skip_bencode_value(input)?,
@@ -116,12 +132,12 @@ fn parse_file_tree_node<'a>(input: &'a [u8]) -> IResult<&'a [u8], FileTreeNode<'
 
         (input, _) = (tag("e"), tag("e")).parse(input)?;
 
-        let length = length.ok_or(fail(input, ErrorKind::Fail))?;
+        let length = length.ok_or(fail(len_fail_pos, ErrorKind::Fail))?;
 
-        if let Some(pr) = pieces_root {
-            if pr.len() != 32 {
-                return Err(fail(input, ErrorKind::Fail));
-            }
+        if let Some(pr) = pieces_root
+            && pr.len() != 32
+        {
+            return Err(fail(pr_fail_pos, ErrorKind::Fail));
         }
 
         Ok((
