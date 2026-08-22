@@ -187,7 +187,7 @@ fn parse_info_dict<'a>(input: &'a [u8]) -> IResult<&'a [u8], Info<'a>> {
     let mut files = None;
     let (mut length, mut len_fail_pos) = (None, input);
     let mut meta_version = None;
-    let (mut name, mut name_fail_pos) = (None, input);
+    let mut name = None;
     let (mut piece_length, mut pl_fail_pos) = (None, input);
     let mut pieces = None;
 
@@ -200,7 +200,6 @@ fn parse_info_dict<'a>(input: &'a [u8]) -> IResult<&'a [u8], Info<'a>> {
         }
 
         len_fail_pos = input;
-        name_fail_pos = input;
         pl_fail_pos = input;
 
         let field;
@@ -244,7 +243,6 @@ fn parse_info_dict<'a>(input: &'a [u8]) -> IResult<&'a [u8], Info<'a>> {
 
     (input, _) = tag("e").parse(input)?;
 
-    let name = name.ok_or(fail(name_fail_pos, ErrorKind::Fail))?;
     let piece_length = piece_length.ok_or(fail(pl_fail_pos, ErrorKind::Fail))?;
 
     let file_layout = match (file_tree, files, length, pieces) {
