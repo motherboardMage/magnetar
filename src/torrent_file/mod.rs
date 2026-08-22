@@ -19,15 +19,15 @@ pub struct Torrent<'a> {
     pub raw_info: &'a [u8],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Info<'a> {
-    pub name: &'a [u8],
+    pub name: Option<&'a [u8]>,
     pub piece_length: usize,
     pub meta_version: Option<i64>,
     pub file_layout: FileLayout<'a>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FileLayout<'a> {
     V1SingleFile {
         pieces: &'a [u8],
