@@ -5,7 +5,7 @@ pub mod skip_values;
 
 #[derive(Debug, Clone)]
 pub struct Torrent<'a> {
-    pub announce: &'a [u8],
+    pub announce: Option<&'a [u8]>,
     pub info: Info<'a>,
     pub piece_layers: Option<BTreeMap<&'a [u8], &'a [u8]>>,
 

@@ -9,7 +9,7 @@ use nom::sequence::delimited;
 use nom::{IResult, Parser};
 
 use crate::torrent_file::skip_values::skip_bencode_value;
-use crate::torrent_file::{FileLayout, FileTreeNode, FileV1, Info};
+use crate::torrent_file::{FileLayout, FileTreeNode, FileV1, Info, Torrent};
 
 fn fail(input: &[u8], code: ErrorKind) -> nom::Err<nom::error::Error<&[u8]>> {
     nom::Err::Failure(nom::error::Error::new(input, code))
@@ -276,6 +276,123 @@ fn parse_info_dict<'a>(input: &'a [u8]) -> IResult<&'a [u8], Info<'a>> {
             piece_length,
             meta_version,
             file_layout,
+        },
+    ))
+}
+
+fn parse_piece_layers<'a>(input: &'a [u8]) -> IResult<&'a [u8], BTreeMap<&'a [u8], &'a [u8]>> {
+    let (mut input, _) = tag("d").parse(input)?;
+
+    let mut pl_map = BTreeMap::new();
+
+    loop {
+        let next;
+        (input, next) = peek(take(1usize)).parse(input)?;
+
+        if next == b"e" {
+            break;
+        }
+
+        let k;
+        let v;
+
+        (input, k) = parse_bencode_string(input)?;
+        if k.len() != 32 {
+            return Err(fail(input, ErrorKind::Fail));
+        }
+
+        (input, v) = parse_bencode_string(input)?;
+        if v.len() % 32 != 0 {
+            return Err(fail(input, ErrorKind::Fail));
+        }
+
+        pl_map.insert(k, v);
+    }
+
+    (input, _) = tag("e").parse(input)?;
+
+    Ok((input, pl_map))
+}
+
+pub fn parse_torrent_file<'a>(input: &'a [u8]) -> IResult<&'a [u8], Torrent<'a>> {
+    let (mut input, _) = tag("d").parse(input)?;
+
+    let mut info_start = input;
+    let mut info_end = input;
+
+    let mut announce = None;
+    let mut announce_list = None;
+    let mut comment = None;
+    let mut created_by = None;
+    let mut creation_date = None;
+    let mut info = None;
+    let (mut piece_layers, pl_fail_pos) = (None, input);
+
+    loop {
+        let next;
+        (input, next) = peek(take(1usize)).parse(input)?;
+
+        if next == b"e" {
+            break;
+        }
+
+        let field;
+        (input, field) = parse_bencode_string(input)?;
+
+        match field {
+            b"announce" => (input, announce) = res_in_some(parse_bencode_string(input))?,
+
+            b"announce-list" => {
+                (input, announce_list) = res_in_some(
+                    delimited(tag("l"), many0(parse_string_list), tag("e")).parse(input),
+                )?
+            }
+
+            b"comment" => (input, comment) = res_in_some(parse_bencode_string(input))?,
+
+            b"created by" => (input, created_by) = res_in_some(parse_bencode_string(input))?,
+
+            b"creation date" => (input, creation_date) = res_in_some(parse_bencode_int(input))?,
+
+            b"info" => {
+                info_start = input;
+                (input, info) = res_in_some(parse_info_dict(input))?;
+                info_end = input;
+            }
+
+            b"piece layers" => (input, piece_layers) = res_in_some(parse_piece_layers(input))?,
+
+            _ => (input, _) = skip_bencode_value(input)?,
+        }
+    }
+
+    (input, _) = tag("e").parse(input)?;
+
+    let info = info.ok_or(fail(input, ErrorKind::Fail))?;
+
+    match info.file_layout {
+        FileLayout::V2 { .. } | FileLayout::Hybrid { .. } => {
+            if piece_layers.is_none() {
+                return Err(fail(pl_fail_pos, ErrorKind::Fail));
+            }
+        }
+
+        _ => (),
+    }
+
+    let raw_info = &info_start[..info_start.len() - info_end.len()];
+
+    Ok((
+        input,
+        Torrent {
+            announce,
+            info,
+            piece_layers,
+            announce_list,
+            comment,
+            created_by,
+            creation_date,
+            raw_info,
         },
     ))
 }
