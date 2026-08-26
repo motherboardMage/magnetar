@@ -1,31 +1,39 @@
 use std::collections::BTreeMap;
 
 pub mod parser;
+pub mod skip_values;
 
 #[derive(Debug, Clone)]
 pub struct Torrent<'a> {
-    pub announce: String,
+    pub announce: Option<&'a [u8]>,
     pub info: Info<'a>,
     pub piece_layers: Option<BTreeMap<&'a [u8], &'a [u8]>>,
 
     /// Optional fields
-    pub announce_list: Option<Vec<Vec<String>>>,
-    pub comment: Option<String>,
-    pub created_by: Option<String>,
+    pub announce_list: Option<Vec<Vec<&'a [u8]>>>,
+    pub comment: Option<&'a [u8]>,
+    pub created_by: Option<&'a [u8]>,
     pub creation_date: Option<i64>,
+
+    // Raw info bytes for hashing
+    pub raw_info: &'a [u8],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Info<'a> {
-    pub name: String,
-    pub piece_length: i64,
+    pub name: Option<&'a [u8]>,
+    pub piece_length: usize,
     pub meta_version: Option<i64>,
     pub file_layout: FileLayout<'a>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FileLayout<'a> {
-    V1 {
+    V1SingleFile {
+        pieces: &'a [u8],
+        length: usize,
+    },
+    V1MultiFile {
         pieces: &'a [u8],
         files: Vec<FileV1<'a>>,
     },
@@ -39,14 +47,17 @@ pub enum FileLayout<'a> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FileV1<'a> {
-    pub length: i64,
-    pub path: Option<Vec<&'a [u8]>>,
+    pub length: usize,
+    pub path: Vec<&'a [u8]>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FileTreeNode<'a> {
     Directory(BTreeMap<&'a [u8], FileTreeNode<'a>>),
-    File { length: i64, pieces_root: &'a [u8] },
+    File {
+        length: usize,
+        pieces_root: Option<&'a [u8]>,
+    },
 }
