@@ -667,4 +667,29 @@ mod tests {
             Ok((b"".as_slice(), expected_info))
         );
     }
+
+    // --- Real torrent file parsing tests ---
+
+    #[test]
+    fn test_parse_arch_linux_hash() {
+        use sha1::{Digest, Sha1};
+
+        const TORRENT_BYTES: &[u8] = include_bytes!("../../fixtures/v1/archlinux.torrent");
+
+        let (remaining, torrent) =
+            parse_torrent_file(TORRENT_BYTES).expect("Failed to parse torrent file");
+
+        assert_eq!(remaining, b"");
+
+        let mut hasher = Sha1::new();
+        hasher.update(torrent.raw_info);
+        let info_hash = hasher.finalize();
+
+        let info_hash_hex = hex::encode(info_hash);
+
+        assert_eq!(
+            info_hash_hex,
+            "ed8507e22addc40fd6fb4f1677bf27fd75967f70".to_lowercase()
+        );
+    }
 }
