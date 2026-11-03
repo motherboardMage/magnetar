@@ -1,3 +1,5 @@
+pub mod http;
+
 pub struct TrackerRequest<'a> {
     pub info_hash: &'a [u8; 20],
     pub peer_id: &'a [u8; 20],
