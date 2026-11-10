@@ -1,5 +1,6 @@
 pub mod http;
 
+#[derive(Clone, Copy, PartialEq)]
 pub struct TrackerRequest<'a> {
     pub info_hash: &'a [u8; 20],
     pub peer_id: &'a [u8; 20],
@@ -12,7 +13,7 @@ pub struct TrackerRequest<'a> {
     pub compact: u8,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Event {
     Started,
     Completed,
