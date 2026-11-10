@@ -20,45 +20,44 @@ fn urlencode_bytes(bytes: &[u8]) -> String {
     encoded
 }
 
-fn build_tracker_url(
-    base_url: &str,
-    req: &TrackerRequest,
-) -> Result<String, Box<dyn std::error::Error>> {
+fn build_tracker_url(base_url: &str, req: &TrackerRequest) -> String {
     let mut tracker_url = base_url.to_string();
 
     if base_url.contains('?') {
         if !base_url.ends_with('&') && !base_url.ends_with('?') {
-            write!(tracker_url, "&")?;
+            write!(tracker_url, "&").unwrap();
         }
     } else {
-        write!(tracker_url, "?")?;
+        write!(tracker_url, "?").unwrap();
     }
 
     write!(
         tracker_url,
-        "info_hash={ih}&peer_id={pi}&port={p}&uploaded={ul}&downloaded={dl}&left={l}&compact={c}",
+        "info_hash={ih}&peer_id={pi}&port={p}&uploaded={ul}&downloaded={dl}&left={l}",
         ih = urlencode_bytes(req.info_hash),
         pi = urlencode_bytes(req.peer_id),
         p = req.port,
         ul = req.uploaded,
         dl = req.downloaded,
         l = req.left,
-        c = req.compact
-    )?;
+    )
+    .unwrap();
 
     if let Some(ev) = req.event {
         match ev {
-            Event::Started => write!(tracker_url, "&event=started")?,
-            Event::Completed => write!(tracker_url, "&event=completed")?,
-            Event::Stopped => write!(tracker_url, "&event=stopped")?,
+            Event::Started => write!(tracker_url, "&event=started").unwrap(),
+            Event::Completed => write!(tracker_url, "&event=completed").unwrap(),
+            Event::Stopped => write!(tracker_url, "&event=stopped").unwrap(),
         }
     }
 
     if let Some(ip) = req.ip {
-        write!(tracker_url, "&ip={ip}")?;
+        write!(tracker_url, "&ip={ip}").unwrap();
     }
 
-    Ok(tracker_url)
+    write!(tracker_url, "&compact={}", req.compact).unwrap();
+
+    tracker_url
 }
 
 #[cfg(test)]
