@@ -12,6 +12,7 @@ pub struct TrackerRequest<'a> {
     pub compact: u8,
 }
 
+#[derive(Clone, Copy)]
 pub enum Event {
     Started,
     Completed,
