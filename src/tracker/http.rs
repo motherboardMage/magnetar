@@ -1,5 +1,9 @@
 use nom::AsChar;
 use reqwest;
+use std::fmt::Write;
+
+use crate::tracker::Event;
+use crate::tracker::TrackerRequest;
 
 fn urlencode_bytes(bytes: &[u8]) -> String {
     let mut encoded = String::with_capacity(bytes.len() * 3);
@@ -14,6 +18,47 @@ fn urlencode_bytes(bytes: &[u8]) -> String {
         }
     }
     encoded
+}
+
+fn build_tracker_url(
+    base_url: &str,
+    req: &TrackerRequest,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut tracker_url = base_url.to_string();
+
+    if base_url.contains('?') {
+        if !base_url.ends_with('&') && !base_url.ends_with('?') {
+            write!(tracker_url, "&")?;
+        }
+    } else {
+        write!(tracker_url, "?")?;
+    }
+
+    write!(
+        tracker_url,
+        "info_hash={ih}&peer_id={pi}&port={p}&uploaded={ul}&downloaded={dl}&left={l}&compact={c}",
+        ih = urlencode_bytes(req.info_hash),
+        pi = urlencode_bytes(req.peer_id),
+        p = req.port,
+        ul = req.uploaded,
+        dl = req.downloaded,
+        l = req.left,
+        c = req.compact
+    )?;
+
+    if let Some(ev) = req.event {
+        match ev {
+            Event::Started => write!(tracker_url, "&event=started")?,
+            Event::Completed => write!(tracker_url, "&event=completed")?,
+            Event::Stopped => write!(tracker_url, "&event=stopped")?,
+        }
+    }
+
+    if let Some(ip) = req.ip {
+        write!(tracker_url, "&ip={ip}")?;
+    }
+
+    Ok(tracker_url)
 }
 
 #[cfg(test)]
