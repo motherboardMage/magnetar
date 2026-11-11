@@ -103,4 +103,66 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_build_url_existing_parameter() {
+        let base_url = "http://tracker.example.com/announce?some=bullshit";
+
+        let req = TrackerRequest {
+            info_hash: &[b'a'; 20],
+            peer_id: &[b'c'; 20],
+            ip: Some("192.168.1.123".parse().unwrap()),
+            port: 6881u16,
+            uploaded: 1_000_000_000u64,
+            downloaded: 2_000_000_000u64,
+            left: 3_000_000_000u64,
+            event: Some(Event::Started),
+            compact: 1u8,
+        };
+
+        assert_eq!(
+            build_tracker_url(base_url, &req),
+            format!(
+                "http://tracker.example.com/announce?some=bullshit&info_hash={ih}&peer_id={pi}&port=6881&uploaded=1000000000&downloaded=2000000000&left=3000000000&event=started&ip=192.168.1.123&compact=1",
+                ih = "a".repeat(20),
+                pi = "c".repeat(20)
+            )
+        );
+    }
+
+    #[test]
+    fn test_build_url_trailing_delimiter() {
+        let base_url = "http://tracker.example.com/announce?";
+        let base_url_2 = "http://tracker.example.com/announce?some=bullshit&";
+
+        let req = TrackerRequest {
+            info_hash: &[b'a'; 20],
+            peer_id: &[b'c'; 20],
+            ip: Some("192.168.1.123".parse().unwrap()),
+            port: 6881u16,
+            uploaded: 1_000_000_000u64,
+            downloaded: 2_000_000_000u64,
+            left: 3_000_000_000u64,
+            event: Some(Event::Started),
+            compact: 1u8,
+        };
+
+        assert_eq!(
+            build_tracker_url(base_url, &req),
+            format!(
+                "http://tracker.example.com/announce?info_hash={ih}&peer_id={pi}&port=6881&uploaded=1000000000&downloaded=2000000000&left=3000000000&event=started&ip=192.168.1.123&compact=1",
+                ih = "a".repeat(20),
+                pi = "c".repeat(20)
+            )
+        );
+
+        assert_eq!(
+            build_tracker_url(base_url_2, &req),
+            format!(
+                "http://tracker.example.com/announce?some=bullshit&info_hash={ih}&peer_id={pi}&port=6881&uploaded=1000000000&downloaded=2000000000&left=3000000000&event=started&ip=192.168.1.123&compact=1",
+                ih = "a".repeat(20),
+                pi = "c".repeat(20)
+            )
+        );
+    }
 }
