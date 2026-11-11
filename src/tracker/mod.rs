@@ -13,6 +13,18 @@ pub struct TrackerRequest<'a> {
     pub compact: u8,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TrackerResponse {
+    Success(AnnounceResponse),
+    Failure(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnnounceResponse {
+    pub interval: u32,
+    pub peers: Vec<std::net::SocketAddr>,
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum Event {
     Started,
