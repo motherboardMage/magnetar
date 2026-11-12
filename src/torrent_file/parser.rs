@@ -11,22 +11,22 @@ use nom::{IResult, Parser};
 use crate::torrent_file::skip_values::skip_bencode_value;
 use crate::torrent_file::{FileLayout, FileTreeNode, FileV1, Info, Torrent};
 
-pub fn fail(input: &[u8], code: ErrorKind) -> nom::Err<nom::error::Error<&[u8]>> {
+pub(crate) fn fail(input: &[u8], code: ErrorKind) -> nom::Err<nom::error::Error<&[u8]>> {
     nom::Err::Failure(nom::error::Error::new(input, code))
 }
 
-fn res_in_some<T>(result: IResult<&[u8], T>) -> IResult<&[u8], Option<T>> {
+pub(crate) fn res_in_some<T>(result: IResult<&[u8], T>) -> IResult<&[u8], Option<T>> {
     result.map(|(ptr, res)| (ptr, Some(res)))
 }
 
-fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
+pub(crate) fn parse_bencode_int(input: &[u8]) -> IResult<&[u8], i64> {
     let mut p = delimited(tag("i"), nom_i64, tag("e"));
     let (input, num) = p.parse(input)?;
 
     Ok((input, num))
 }
 
-fn parse_bencode_string(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub(crate) fn parse_bencode_string(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (input, len) = nom_u64(input)?;
     let (input, _) = tag(":").parse(input)?;
     let (input, parsed) = take(len).parse(input)?;
