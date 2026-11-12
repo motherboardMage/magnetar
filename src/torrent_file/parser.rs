@@ -11,7 +11,7 @@ use nom::{IResult, Parser};
 use crate::torrent_file::skip_values::skip_bencode_value;
 use crate::torrent_file::{FileLayout, FileTreeNode, FileV1, Info, Torrent};
 
-fn fail(input: &[u8], code: ErrorKind) -> nom::Err<nom::error::Error<&[u8]>> {
+pub fn fail(input: &[u8], code: ErrorKind) -> nom::Err<nom::error::Error<&[u8]>> {
     nom::Err::Failure(nom::error::Error::new(input, code))
 }
 
