@@ -238,4 +238,52 @@ mod tests {
             )
         );
     }
+
+    // --- Tracker response parser tests ---
+
+    #[test]
+    fn test_parse_tracker_response_standard() {
+        let expected = TrackerResponse::Success(AnnounceResponse {
+            interval: 1800u32,
+            peers: vec![
+                SocketAddr::from((Ipv4Addr::new(127, 0, 0, 1), 6881)),
+                SocketAddr::from((Ipv4Addr::new(1, 2, 3, 4), 80)),
+            ],
+        });
+
+        assert_eq!(
+            parse_tracker_response(
+                b"d8:intervali1800e5:peers12:\x7f\x00\x00\x01\x1a\xe1\x01\x02\x03\x04\x00\x50e"
+            ),
+            Ok((b"".as_slice(), expected))
+        )
+    }
+
+    #[test]
+    fn test_parse_tracker_response_extra_keys() {
+        let expected = TrackerResponse::Success(AnnounceResponse {
+            interval: 1800u32,
+            peers: vec![
+                SocketAddr::from((Ipv4Addr::new(127, 0, 0, 1), 6881)),
+                SocketAddr::from((Ipv4Addr::new(1, 2, 3, 4), 80)),
+            ],
+        });
+
+        assert_eq!(
+            parse_tracker_response(
+                b"d8:completei10e8:intervali1800e10:incompletei10e5:peers12:\x7f\x00\x00\x01\x1a\xe1\x01\x02\x03\x04\x00\x50e"
+            ),
+            Ok((b"".as_slice(), expected))
+        )
+    }
+
+    #[test]
+    fn test_parse_tracker_response_failure() {
+        let expected = TrackerResponse::Failure("torrent not registered".into());
+
+        assert_eq!(
+            parse_tracker_response(b"d14:failure reason22:torrent not registerede"),
+            Ok((b"".as_slice(), expected))
+        )
+    }
 }
