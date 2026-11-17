@@ -1,9 +1,19 @@
-use nom::AsChar;
-use reqwest;
-use std::fmt::Write;
+use crate::torrent_file::parser::{fail, parse_bencode_int, parse_bencode_string, res_in_some};
+use crate::torrent_file::skip_values::skip_bencode_value;
 
-use crate::tracker::Event;
-use crate::tracker::TrackerRequest;
+use nom::IResult;
+use nom::bytes::complete::{tag, take};
+use nom::combinator::peek;
+use nom::error::ErrorKind;
+use nom::{AsChar, Parser};
+
+use reqwest;
+use std::any::Any;
+use std::fmt::Write;
+use std::net::{Ipv4Addr, SocketAddr};
+
+use crate::tracker::{AnnounceResponse, TrackerRequest};
+use crate::tracker::{Event, TrackerResponse};
 
 fn urlencode_bytes(bytes: &[u8]) -> String {
     let mut encoded = String::with_capacity(bytes.len() * 3);
@@ -58,6 +68,69 @@ fn build_tracker_url(base_url: &str, req: &TrackerRequest) -> String {
     write!(tracker_url, "&compact={}", req.compact).unwrap();
 
     tracker_url
+}
+
+fn parse_compact_peers(input: &[u8]) -> IResult<&[u8], Vec<std::net::SocketAddr>> {
+    let (input, data) = parse_bencode_string(input)?;
+
+    if data.len() % 6 != 0 {
+        return Err(fail(input, nom::error::ErrorKind::LengthValue));
+    }
+
+    let mut peers = Vec::with_capacity(data.len() / 6);
+    for chunk in data.chunks_exact(6) {
+        let ipv4 = Ipv4Addr::new(chunk[0], chunk[1], chunk[2], chunk[3]);
+        let port = u16::from_be_bytes([chunk[4], chunk[5]]);
+        peers.push(SocketAddr::from((ipv4, port)));
+    }
+
+    Ok((input, peers))
+}
+
+fn parse_tracker_response(input: &[u8]) -> IResult<&[u8], TrackerResponse> {
+    let (mut input, _) = tag("d").parse(input)?;
+    let mut failure_reason = None;
+    let mut interval = None;
+    let mut peers = None;
+
+    loop {
+        let (_, mut next) = peek(take(1usize)).parse(input)?;
+
+        if next == b"e" {
+            break;
+        }
+
+        (input, next) = parse_bencode_string(input)?;
+
+        match next {
+            b"failure reason" => {
+                (input, failure_reason) = res_in_some(parse_bencode_string(input))?
+            }
+            b"interval" => (input, interval) = res_in_some(parse_bencode_int(input))?,
+            b"peers" => (input, peers) = res_in_some(parse_compact_peers(input))?,
+            _ => (input, _) = skip_bencode_value(input)?,
+        }
+    }
+
+    (input, _) = tag("e").parse(input)?;
+
+    if let Some(f) = failure_reason {
+        Ok((
+            input,
+            TrackerResponse::Failure(String::from_utf8_lossy(f).into_owned()),
+        ))
+    } else {
+        let interval = match interval {
+            Some(i) if i > 0 => i as u32,
+            _ => return Err(fail(input, ErrorKind::Fail)),
+        };
+        let peers = peers.ok_or(fail(input, ErrorKind::Fail))?;
+
+        Ok((
+            input,
+            TrackerResponse::Success(AnnounceResponse { interval, peers }),
+        ))
+    }
 }
 
 #[cfg(test)]
