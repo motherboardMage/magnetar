@@ -8,7 +8,6 @@ use nom::error::ErrorKind;
 use nom::{AsChar, Parser};
 
 use reqwest;
-use std::any::Any;
 use std::fmt::Write;
 use std::net::{Ipv4Addr, SocketAddr};
 
@@ -18,7 +17,7 @@ use crate::tracker::{Event, TrackerResponse};
 fn urlencode_bytes(bytes: &[u8]) -> String {
     let mut encoded = String::with_capacity(bytes.len() * 3);
 
-    let allowed_symbols = [b'.', b'_', b'-', b'~'];
+    let allowed_symbols = *b"._-~";
     for b in bytes {
         if b.is_ascii_alphanumeric() || allowed_symbols.contains(b) {
             encoded.push(b.as_char());
@@ -78,7 +77,7 @@ fn parse_compact_peers(input: &[u8]) -> IResult<&[u8], Vec<std::net::SocketAddr>
     }
 
     let mut peers = Vec::with_capacity(data.len() / 6);
-    for chunk in data.chunks_exact(6) {
+    for chunk in data.as_chunks::<6>().0 {
         let ipv4 = Ipv4Addr::new(chunk[0], chunk[1], chunk[2], chunk[3]);
         let port = u16::from_be_bytes([chunk[4], chunk[5]]);
         peers.push(SocketAddr::from((ipv4, port)));

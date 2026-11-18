@@ -280,7 +280,7 @@ fn parse_info_dict<'a>(input: &'a [u8]) -> IResult<&'a [u8], Info<'a>> {
     ))
 }
 
-fn parse_piece_layers<'a>(input: &'a [u8]) -> IResult<&'a [u8], BTreeMap<&'a [u8], &'a [u8]>> {
+fn parse_piece_layers(input: &[u8]) -> IResult<&[u8], BTreeMap<&[u8], &[u8]>> {
     let (mut input, _) = tag("d").parse(input)?;
 
     let mut pl_map = BTreeMap::new();
@@ -371,10 +371,8 @@ pub fn parse_torrent_file<'a>(input: &'a [u8]) -> IResult<&'a [u8], Torrent<'a>>
     let info = info.ok_or(fail(input, ErrorKind::Fail))?;
 
     match info.file_layout {
-        FileLayout::V2 { .. } | FileLayout::Hybrid { .. } => {
-            if piece_layers.is_none() {
-                return Err(fail(pl_fail_pos, ErrorKind::Fail));
-            }
+        FileLayout::V2 { .. } | FileLayout::Hybrid { .. } if piece_layers.is_none() => {
+            return Err(fail(pl_fail_pos, ErrorKind::Fail));
         }
 
         _ => (),
